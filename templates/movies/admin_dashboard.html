@@ -1,0 +1,240 @@
+{% extends "users/basic.html" %}
+{% block content %}
+<div class="container-fluid py-4 px-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold">📊 Admin Analytics Dashboard</h2>
+        <span class="badge bg-success">Live Data</span>
+    </div>
+
+    <!-- SUMMARY CARDS -->
+    <div class="row mb-4">
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #0d6efd !important;">
+                <div class="card-body">
+                    <p class="text-muted mb-1">Today's Revenue</p>
+                    <h3 class="fw-bold text-primary">₹{{ daily_revenue }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #198754 !important;">
+                <div class="card-body">
+                    <p class="text-muted mb-1">Weekly Revenue</p>
+                    <h3 class="fw-bold text-success">₹{{ weekly_revenue }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #ffc107 !important;">
+                <div class="card-body">
+                    <p class="text-muted mb-1">Monthly Revenue</p>
+                    <h3 class="fw-bold text-warning">₹{{ monthly_revenue }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #dc3545 !important;">
+                <div class="card-body">
+                    <p class="text-muted mb-1">Total Bookings</p>
+                    <h3 class="fw-bold text-danger">{{ total_bookings }}</h3>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="row mb-4">
+
+        <!-- POPULAR MOVIES -->
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3">🎬 Most Popular Movies</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Movie</th>
+                                    <th>Bookings</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for movie in popular_movies %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ movie.movie__name }}</td>
+                                    <td>
+                                        <span class="badge bg-primary">
+                                            {{ movie.booking_count }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">
+                                        No bookings yet
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BUSIEST THEATERS -->
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3">🏟️ Busiest Theaters</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Theater</th>
+                                    <th>Movie</th>
+                                    <th>Occupancy</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for theater in busiest_theaters %}
+                                <tr>
+                                    <td>{{ theater.theater__name }}</td>
+                                    <td>{{ theater.theater__movie__name }}</td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div
+                                                class="progress-bar bg-success"
+                                                style="width: {{ theater.occupancy_rate }}%"
+                                            >
+                                                {{ theater.occupancy_rate }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">
+                                        No data yet
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="row mb-4">
+
+        <!-- PEAK HOURS -->
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3">⏰ Peak Booking Hours</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Hour</th>
+                                    <th>Bookings</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for hour in peak_hours %}
+                                <tr>
+                                    <td>{{ hour.hour }}:00 - {{ hour.hour }}:59</td>
+                                    <td>
+                                        <span class="badge bg-info text-dark">
+                                            {{ hour.booking_count }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="2" class="text-center text-muted">
+                                        No data yet
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CANCELLATION RATES -->
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3">❌ Payment Statistics</h5>
+
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Cancellation Rate</span>
+                            <span class="fw-bold">{{ cancellation_rate }}%</span>
+                        </div>
+                        <div class="progress mb-3" style="height: 20px;">
+                            <div
+                                class="progress-bar bg-warning"
+                                style="width: {{ cancellation_rate }}%"
+                            >
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Failure Rate</span>
+                            <span class="fw-bold">{{ failure_rate }}%</span>
+                        </div>
+                        <div class="progress" style="height: 20px;">
+                            <div
+                                class="progress-bar bg-danger"
+                                style="width: {{ failure_rate }}%"
+                            >
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row text-center mt-4">
+                        <div class="col-6">
+                            <h4 class="fw-bold text-warning">{{ cancelled_payments }}</h4>
+                            <p class="text-muted small">Cancelled</p>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="fw-bold text-danger">{{ failed_payments }}</h4>
+                            <p class="text-muted small">Failed</p>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h4 class="fw-bold text-primary">{{ total_users }}</h4>
+                            <p class="text-muted small">Total Users</p>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="fw-bold text-success">{{ total_bookings }}</h4>
+                            <p class="text-muted small">Total Bookings</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,368 @@
+{% extends "users/basic.html" %}
+
+{% block content %}
+
+<div class="container py-5">
+
+    <h1 class="text-center fw-bold mb-5">
+        Movies
+    </h1>
+
+    <form method="GET">
+
+        <div class="row">
+
+            <!-- FILTER SIDEBAR -->
+
+            <div class="col-lg-3 mb-4">
+
+                <div class="card shadow-sm border-0 p-4">
+
+                    <!-- SEARCH -->
+
+                    <div class="mb-4">
+
+                        <h5 class="fw-bold mb-3">
+                            Search
+                        </h5>
+
+                        <input
+                            type="text"
+                            name="search"
+                            class="form-control"
+                            placeholder="Search movies..."
+                            value="{{ request.GET.search }}"
+                        >
+
+                    </div>
+
+                    <!-- GENRES -->
+
+                    <div class="mb-4">
+
+                        <h5 class="fw-bold mb-3">
+                            Genres
+                        </h5>
+
+                        {% for genre in genres %}
+
+                        <div class="form-check mb-2">
+
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                name="genre"
+                                value="{{ genre.id }}"
+
+                                {% if genre.id|stringformat:"s" in request.GET.getlist.genre %}
+                                checked
+                                {% endif %}
+                            >
+
+                            <label class="form-check-label">
+
+                                {{ genre.name }}
+                                ({{ genre.movie_count }})
+
+                            </label>
+
+                        </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                    <!-- LANGUAGES -->
+
+                    <div class="mb-4">
+
+                        <h5 class="fw-bold mb-3">
+                            Languages
+                        </h5>
+
+                        {% for language in languages %}
+
+                        <div class="form-check mb-2">
+
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                name="language"
+                                value="{{ language.id }}"
+
+                                {% if language.id|stringformat:"s" in request.GET.getlist.language %}
+                                checked
+                                {% endif %}
+                            >
+
+                            <label class="form-check-label">
+
+                                {{ language.name }}
+                                ({{ language.movie_count }})
+
+                            </label>
+
+                        </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                    <!-- SORTING -->
+
+                    <div class="mb-4">
+
+                        <h5 class="fw-bold mb-3">
+                            Sort By
+                        </h5>
+
+                        <select
+                            name="sort"
+                            class="form-select"
+                        >
+
+                            <option value="">
+                                Select
+                            </option>
+
+                            <option
+                                value="rating"
+
+                                {% if request.GET.sort == 'rating' %}
+                                selected
+                                {% endif %}
+                            >
+                                Highest Rated
+                            </option>
+
+                            <option
+                                value="latest"
+
+                                {% if request.GET.sort == 'latest' %}
+                                selected
+                                {% endif %}
+                            >
+                                Latest
+                            </option>
+
+                            <option
+                                value="oldest"
+
+                                {% if request.GET.sort == 'oldest' %}
+                                selected
+                                {% endif %}
+                            >
+                                Oldest
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                    <!-- BUTTONS -->
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary w-100 mb-2"
+                    >
+
+                        Apply Filters
+
+                    </button>
+
+                    <a
+                        href="{% url 'movie_list' %}"
+                        class="btn btn-outline-secondary w-100"
+                    >
+
+                        Reset
+
+                    </a>
+
+                </div>
+
+            </div>
+
+            <!-- MOVIES -->
+
+            <div class="col-lg-9">
+
+                <div class="row">
+
+                    {% for movie in page_obj %}
+
+                    <div class="col-lg-4 col-md-6 mb-4">
+
+                        <div class="card movie-card h-100 border-0 shadow-sm">
+
+                            <img
+                                src="{{ movie.image.url }}"
+                                class="card-img-top"
+                                style="
+                                    height:350px;
+                                    object-fit:cover;
+                                "
+                            >
+
+                            <div class="card-body">
+
+                                <h5 class="fw-bold">
+
+                                    {{ movie.name }}
+
+                                </h5>
+
+                                <p>
+
+                                    <span class="badge bg-warning text-dark">
+
+                                        ⭐ {{ movie.rating }}
+
+                                    </span>
+
+                                </p>
+
+                                <p class="text-muted small">
+
+                                    {{ movie.cast|truncatechars:70 }}
+
+                                </p>
+
+                                <p>
+
+                                    <strong>Language:</strong>
+
+                                    {{ movie.language.name }}
+
+                                </p>
+
+                                <div class="mb-3">
+
+                                    {% for genre in movie.genres.all %}
+
+                                    <span class="badge bg-white">
+
+                                        {{ genre.name }}
+
+                                    </span>
+
+                                    {% endfor %}
+
+                                </div>
+
+                            </div>
+
+                            <div class="card-footer bg-white border-0">
+
+
+                                <a
+                                    href="{% url 'movie_detail' movie.id %}"
+                                    class="btn btn-outline-dark w-100 mb-2"
+                                > View Details</a>
+
+                                <a
+                                    href="{% url 'theater_list' movie.id %}"
+                                    class="btn btn-outline-primary w-100"
+                                >
+
+                                    View Theaters
+
+                                </a>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    {% empty %}
+
+                    <div class="col-12 text-center">
+
+                        <h3>
+                            No movies found
+                        </h3>
+
+                    </div>
+
+                    {% endfor %}
+
+                </div>
+
+                <!-- PAGINATION -->
+
+                <nav class="mt-4">
+
+                    <ul class="pagination justify-content-center">
+
+                        {% if page_obj.has_previous %}
+
+                        <li class="page-item">
+
+                            <a
+                                class="page-link"
+                                href="?page={{ page_obj.previous_page_number }}"
+                            >
+
+                                Previous
+
+                            </a>
+
+                        </li>
+
+                        {% endif %}
+
+                        <li class="page-item active">
+
+                            <span class="page-link">
+
+                                {{ page_obj.number }}
+
+                            </span>
+
+                        </li>
+
+                        {% if page_obj.has_next %}
+
+                        <li class="page-item">
+
+                            <a
+                                class="page-link"
+                                href="?page={{ page_obj.next_page_number }}"
+                            >
+
+                                Next
+
+                            </a>
+
+                        </li>
+
+                        {% endif %}
+
+                    </ul>
+
+                </nav>
+
+            </div>
+
+        </div>
+
+    </form>
+
+</div>
+
+<style>
+
+.movie-card{
+
+    transition:0.3s;
+}
+
+.movie-card:hover{
+
+    transform:translateY(-10px);
+}
+
+</style>
+
+{% endblock %}

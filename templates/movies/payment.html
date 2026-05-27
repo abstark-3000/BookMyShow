@@ -1,0 +1,135 @@
+{% extends "users/basic.html" %}
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-6 mx-auto">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+
+                    <h4 class="fw-bold mb-4">Complete Payment</h4>
+
+                    <table class="table">
+                        <tr>
+                            <td><strong>Movie</strong></td>
+                            <td>{{ theater.movie.name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Theater</strong></td>
+                            <td>{{ theater.name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Show Time</strong></td>
+                            <td>{{ theater.time }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Seats</strong></td>
+                            <td>
+                                {% for seat in selected_seats %}
+                                    {{ seat.seat_number }}{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Amount</strong></td>
+                            <td>₹{{ amount }}</td>
+                        </tr>
+                    </table>
+
+                    <!-- Reservation countdown timer -->
+                    <div class="alert alert-warning text-center mb-3">
+                        ⏰ Seats reserved for <strong id="countdown">2:00</strong> — complete payment before timeout
+                    </div>
+
+                    <button id="pay-btn" class="btn btn-success w-100 btn-lg">
+                        Pay ₹{{ amount }}
+                    </button>
+
+                    
+
+                    <a href="/movies/payment/test-success/{{ razorpay_order_id }}/" class="btn btn-warning w-100 mt-2">
+                        ⚡ Simulate Success (Testing Only)
+                    </a>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+document.getElementById('pay-btn').onclick = function() {
+    var options = {
+        key: '{{ razorpay_key_id }}',
+        amount: {{ amount }} * 100,
+        currency: 'INR',
+        name: 'BookMyShow',
+        description: 'Movie Ticket Booking',
+        order_id: '{{ razorpay_order_id }}',
+        retry: { enabled: false },
+        handler: function(response) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{% url "payment_success" %}';
+            const fields = {
+                'razorpay_order_id': response.razorpay_order_id,
+                'razorpay_payment_id': response.razorpay_payment_id,
+                'razorpay_signature': response.razorpay_signature,
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            };
+            for (const [key, value] of Object.entries(fields)) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = value;
+                form.appendChild(input);
+            }
+            document.body.appendChild(form);
+            form.submit();
+        },
+        prefill: {
+            name: '{{ user.username }}',
+            email: '{{ user.email }}',
+            contact: '9999999999'
+        },
+        theme: { color: '#0d6efd' },
+        modal: {
+            ondismiss: function() {
+                fetch('{% url "payment_success" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: 'cancelled=true&razorpay_order_id={{ razorpay_order_id }}'
+                }).then(() => {
+                    window.location.href = '{% url "movie_list" %}';
+                });
+            }
+        }
+    };
+    const rzp = new Razorpay(options);
+    rzp.open();
+};
+
+
+// Countdown timer — 2 minutes
+let timeLeft = {{ reservation_timeout }};
+const countdownEl = document.getElementById('countdown');
+
+const timer = setInterval(function() {
+    timeLeft--;
+    const mins = Math.floor(timeLeft / 60);
+    const secs = timeLeft % 60;
+    countdownEl.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+
+    if (timeLeft <= 0) {
+        clearInterval(timer);
+        // Redirect back to seat selection when timeout expires
+        alert('Your seat reservation has expired. Please select seats again.');
+        window.location.href = '{% url "book_seats" theater.id %}';
+    }
+}, 1000);
+
+</script>
+{% endblock %}

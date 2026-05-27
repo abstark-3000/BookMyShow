@@ -1,0 +1,276 @@
+{% extends "users/basic.html" %}
+
+{% block content %}
+
+<div class="container py-5">
+
+    <div class="row">
+
+        <!-- MOVIE POSTER + INFO -->
+
+        <div class="col-lg-4 mb-4">
+
+            <div class="card border-0 shadow-sm">
+
+                <img
+                    src="{{ movie.image.url }}"
+                    class="card-img-top"
+                    style="height: 450px; object-fit: cover;"
+                    alt="{{ movie.name }}"
+                >
+
+                <div class="card-body">
+
+                    <span class="badge bg-warning text-dark fs-6 mb-2">
+                        ⭐ {{ movie.rating }}
+                    </span>
+
+                    <p class="mb-1">
+                        <strong>Language:</strong> {{ movie.language.name }}
+                    </p>
+
+                    <div class="mb-3 mt-2">
+                        {% for genre in movie.genres.all %}
+                        <span class="badge bg-white me-1">
+                            {{ genre.name }}
+                        </span>
+                        {% endfor %}
+                    </div>
+
+                    <p class="text-muted small mb-0">
+                        <strong>Cast:</strong> {{ movie.cast }}
+                    </p>
+
+                </div>
+
+                <div class="card-footer bg-white border-0 pb-3">
+                    <a
+                        href="{% url 'theater_list' movie.id %}"
+                        class="btn btn-primary w-100"
+                    >
+                        Book Tickets
+                    </a>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- MOVIE DETAILS + TRAILER -->
+
+        <div class="col-lg-8">
+
+            <!-- Title & Description -->
+
+            <div class="card border-0 shadow-sm mb-4">
+
+                <div class="card-body p-4">
+
+                    <h2 class="fw-bold mb-2">{{ movie.name }}</h2>
+
+                    <hr>
+
+                    {% if movie.description %}
+                    <p class="text-muted" style="line-height: 1.8;">
+                        {{ movie.description }}
+                    </p>
+                    {% else %}
+                    <p class="text-muted fst-italic">
+                        No description available for this movie.
+                    </p>
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+            <!-- TRAILER SECTION -->
+
+            <div class="card border-0 shadow-sm mb-4">
+
+                <div class="card-body p-4">
+
+                    <h5 class="fw-bold mb-3"> Official Trailer</h5>
+
+                    {% if embed_url %}
+
+                        <!-- Click to load trailer — lazy loading -->
+                        <div
+                            id="trailer-wrapper"
+                            class="trailer-wrapper"
+                            data-embed-url="{{ embed_url|escape }}"
+                            onclick="loadTrailer()"
+                        >
+                            <div class="play-btn-overlay">
+                                <div class="play-circle">
+                                    <span class="play-icon">▶</span>
+                                </div>
+                                <p class="mt-3 text-white fw-bold">
+                                    Click to load trailer
+                                </p>
+                                <p class="text-white-50 small">
+                                    Trailer loads on demand to save bandwidth
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Fallback if video unavailable -->
+                        <div
+                            id="trailer-error"
+                            class="alert alert-warning mt-3"
+                            style="display: none;"
+                        >
+                            ⚠️ Trailer is currently unavailable.
+                            <a
+                                href="{{ movie.trailer_url|escape }}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="alert-link"
+                            >
+                                Watch on YouTube instead
+                            </a>
+                        </div>
+
+                    {% else %}
+
+                        <!-- No trailer in DB fallback -->
+                        <div class="alert alert-secondary">
+                             No trailer available for this movie yet.
+                        </div>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+            <!-- BACK BUTTON -->
+
+            <div class="d-flex align-items-center">
+
+                <a
+                    href="{% url 'movie_list' %}"
+                    class="btn btn-outline-secondary"
+                    style="margin-right: 20px !important;"
+                >
+                    ← Back to Movies
+                </a>
+
+                <a
+                    href="{% url 'theater_list' movie.id %}"
+                    class="btn btn-primary"
+                >
+                    Book Tickets
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<style>
+
+/* Trailer wrapper — 16:9 aspect ratio box */
+.trailer-wrapper {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%;
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.trailer-wrapper:hover {
+    transform: scale(1.01);
+}
+
+.trailer-wrapper iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Play button overlay */
+.play-btn-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+}
+
+.play-circle {
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 3px solid white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.3s;
+}
+
+.trailer-wrapper:hover .play-circle {
+    background: rgba(255, 255, 255, 0.35);
+    transform: scale(1.1);
+}
+
+.play-icon {
+    font-size: 28px;
+    margin-left: 5px; /* optical center for play triangle */
+}
+
+</style>
+
+<script>
+function loadTrailer() {
+    const wrapper = document.getElementById('trailer-wrapper');
+
+    // Read URL from data attribute — never from innerHTML (XSS prevention)
+    const embedUrl = wrapper.dataset.embedUrl;
+
+    if (!embedUrl) {
+        document.getElementById('trailer-error').style.display = 'block';
+        return;
+    }
+
+    // Validate it's a YouTube nocookie URL before embedding (XSS prevention)
+    if (!embedUrl.startsWith('https://www.youtube-nocookie.com/embed/')) {
+        document.getElementById('trailer-error').style.display = 'block';
+        return;
+    }
+
+    // Create iframe only on click — this is the lazy loading
+    const iframe = document.createElement('iframe');
+    iframe.src = embedUrl + '&autoplay=1';
+    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+    iframe.allowFullscreen = true;
+
+    // Handle unavailable/removed video
+    iframe.onerror = function () {
+        document.getElementById('trailer-error').style.display = 'block';
+        wrapper.style.display = 'none';
+    };
+
+    // Replace click overlay with actual iframe
+    wrapper.innerHTML = '';
+    wrapper.appendChild(iframe);
+}
+</script>
+
+{% endblock %}
