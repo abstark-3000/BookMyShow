@@ -1,0 +1,71 @@
+services:
+  - type: web
+    name: bookmyshow-web
+    env: python
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+    startCommand: gunicorn bookmyseat.wsgi --bind 0.0.0.0:$PORT
+    envVars:
+      - key: SECRET_KEY
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: DEBUG
+        value: False
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bookmyshow-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: bookmyshow-redis
+          type: redis
+          property: connectionString
+
+  - type: worker
+    name: bookmyshow-worker
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A bookmyseat worker --pool=solo -l info
+    envVars:
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bookmyshow-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: bookmyshow-redis
+          type: redis
+          property: connectionString
+
+  - type: worker
+    name: bookmyshow-beat
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A bookmyseat beat -l info
+    envVars:
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bookmyshow-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: bookmyshow-redis
+          type: redis
+          property: connectionString
+
+databases:
+  - name: bookmyshow-db
+    plan: free
+
+  - name: bookmyshow-redis
+    plan: free
