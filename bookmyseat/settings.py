@@ -122,13 +122,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ==============================================================================
 # REDIS AND CELERY INTEGRATION
 # ==============================================================================
-RAW_REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-
-if RAW_REDIS_URL.startswith('rediss://') and 'ssl_cert_reqs' not in RAW_REDIS_URL:
-    separator = '&' if '?' in RAW_REDIS_URL else '?'
-    REDIS_URL = f"{RAW_REDIS_URL}{separator}ssl_cert_reqs=none"
-else:
-    REDIS_URL = RAW_REDIS_URL
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = None
@@ -137,17 +131,20 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 
-# 🟢 ADD THIS BLOCK: Tells Celery to safely bypass strict SSL locally
-if REDIS_URL.startswith('rediss://'):
-    CELERY_BROKER_USE_SSL = {
-        'ssl_cert_reqs': 0  # 0 corresponds to CERT_NONE / bypass validation
-    }
-
 CELERY_BEAT_SCHEDULE = {
     'release-expired-reservations': {
         'task': 'movies.tasks.release_expired_reservations',
         'schedule': 60.0,
     },
+}
+
+# Standard Cache Configuration
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': REDIS_URL,
+        'TIMEOUT': 300,
+    }
 }
 
 # Production Cache Configuration supporting Secure Cloud TLS Connection Strings
