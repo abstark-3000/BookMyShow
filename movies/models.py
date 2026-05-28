@@ -7,6 +7,10 @@ from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 import re
 
+from imagekitio.models.UploadFileRequestOptions import UploadFileRequestOptions
+import base64
+from django.conf import settings
+
 class Genre(models.Model):
 
     name = models.CharField(
@@ -56,6 +60,11 @@ class Movie(models.Model):
 
     image = models.ImageField(
         upload_to='movies/'
+    )
+    image_url = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True
     )
 
     rating = models.DecimalField(
