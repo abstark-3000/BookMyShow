@@ -105,21 +105,24 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-MEDIA_URL = '/media/'  # Required for Django template image rendering engines
+MEDIA_URL = '/media/'
 
-# Modern Django 4.2+ Storage Framework
+# Standard file pipeline to completely stop WhiteNoise compression crashes on Render
 STORAGES = {
     "default": {
         "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
     },
     "staticfiles": {
-        # 🟢 CHANGED LINE HERE: Drops the strict manifest check to prevent build crashes
-        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
 
-# Legacy fallback for Cloudinary build compliance
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+# Keeps legacy libraries from crashing on initialization
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+
+# Disables strict file-parsing checks in the WhiteNoise mid-layer
+WHITENOISE_MANIFEST_STRICT = False
+WHITENOISE_AUTOREFRESH = True
 
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME'),
@@ -156,7 +159,7 @@ CACHES = {
         'TIMEOUT': 300,
         'OPTIONS': {
             'CONNECTION_POOL_KWARGS': {
-                'ssl_cert_reqs': None  # Bypasses strict SSL validation errors for the cache engine
+                'ssl_cert_reqs': None
             }
         }
     }
