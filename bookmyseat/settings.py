@@ -2,32 +2,37 @@ from pathlib import Path
 import os
 import dj_database_url
 from dotenv import load_dotenv
-from celery.schedules import crontab
 
 # Load environment variables first before anything else
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY
+# ==============================================================================
+# SECURITY CONFIGURATION
+# ==============================================================================
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-fallback-key')
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+
 ALLOWED_HOSTS = ['*']
+
 CSRF_TRUSTED_ORIGINS = [
     'https://*.ngrok-free.dev',
     'https://*.onrender.com',
 ]
 
-# APPLICATIONS
+# ==============================================================================
+# APPLICATIONS CONFIGURATION
+# ==============================================================================
 INSTALLED_APPS = [
-    'cloudinary_storage',   # 1. This MUST go first!
+    'cloudinary_storage',   # 1. This MUST go first to override static/media backends
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'cloudinary',           # 2. This can go right below staticfiles
+    'cloudinary',           # 2. Placed right under staticfiles
     'users',
     'movies',
 ]
@@ -43,16 +48,17 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-AUTH_USER_MODEL = 'auth.User'
 ROOT_URLCONF = 'bookmyseat.urls'
 LOGIN_URL = '/login/'
 WSGI_APPLICATION = 'bookmyseat.wsgi.application'
 
-# TEMPLATES
+# ==============================================================================
+# TEMPLATE ENGINE
+# ==============================================================================
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['templates'],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -65,7 +71,9 @@ TEMPLATES = [
     },
 ]
 
-# DATABASE
+# ==============================================================================
+# DATABASE CONFIGURATION (Aiven PostgreSQL / SQLite Local Fallback)
+# ==============================================================================
 DATABASES = {
     'default': dj_database_url.config(
         default=f'sqlite:///{BASE_DIR}/db.sqlite3',
@@ -73,7 +81,9 @@ DATABASES = {
     )
 }
 
+# ==============================================================================
 # PASSWORD VALIDATION
+# ==============================================================================
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -81,27 +91,40 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+# ==============================================================================
 # INTERNATIONALIZATION
+# ==============================================================================
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# STATIC FILES
+# ==============================================================================
+# STATIC & MEDIA FILE MANAGEMENT (WhiteNoise & Cloudinary)
+# ==============================================================================
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# MEDIA FILES
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': os.environ.get('CLOUDINARY_API_KEY'),
+    'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET'),
+}
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# REDIS
+# ==============================================================================
+# REDIS, CELERY, AND CACHE INTEGRATION
+# ==============================================================================
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 
-# CELERY
+# Celery Configurations
 CELERY_BROKER_URL = REDIS_URL
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
@@ -113,16 +136,23 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
-# CACHE
+# Production Cache Configuration supporting Secure Cloud TLS Connection Strings
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
         'LOCATION': REDIS_URL,
         'TIMEOUT': 300,
+        'OPTIONS': {
+            'CONNECTION_POOL_KWARGS': {
+                'ssl_cert_reqs': None  # Bypasses strict SSL validation errors for cloud providers
+            }
+        }
     }
 }
 
-# EMAIL
+# ==============================================================================
+# EMAIL SYSTEM CONFIGURATION
+# ==============================================================================
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
@@ -131,15 +161,18 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.environ.get('EMAIL_HOST_USER')
 
-# RAZORPAY
+# ==============================================================================
+# RAZORPAY GATEWAY CREDS
+# ==============================================================================
 RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID')
 RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET')
 RAZORPAY_WEBHOOK_SECRET = os.environ.get('RAZORPAY_WEBHOOK_SECRET', 'anyrandomstring')
 
-# SECURITY
 SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 
-# LOGGING
+# ==============================================================================
+# LOGGING (Using dynamic BASE_DIR path to allow Render execution writes)
+# ==============================================================================
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -147,7 +180,7 @@ LOGGING = {
         'file': {
             'level': 'ERROR',
             'class': 'logging.FileHandler',
-            'filename': 'email_errors.log',
+            'filename': os.path.join(BASE_DIR, 'email_errors.log'),
         },
     },
     'loggers': {
@@ -158,12 +191,3 @@ LOGGING = {
         },
     },
 }
-
-
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME'),
-    'API_KEY': os.environ.get('CLOUDINARY_API_KEY'),
-    'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET'),
-}
-
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
