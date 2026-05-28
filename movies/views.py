@@ -153,7 +153,6 @@ def movie_detail(request, movie_id):
 
 @login_required(login_url='/login/')
 def book_seats(request, theater_id):
-
     theater = get_object_or_404(Theater, id=theater_id)
 
     with transaction.atomic():
@@ -180,12 +179,9 @@ def book_seats(request, theater_id):
         selected_seats = []
         error_seats = []
 
-        # Reserve each seat atomically — prevents race conditions
         for seat_id in selected_seat_ids:
             with transaction.atomic():
                 try:
-                    # select_for_update locks the row so no other
-                    # request can read/write it simultaneously
                     seat = Seat.objects.select_for_update().get(
                         id=int(seat_id),
                         theater=theater
@@ -193,17 +189,14 @@ def book_seats(request, theater_id):
                 except Seat.DoesNotExist:
                     continue
 
-                # Check if booked
                 if seat.is_booked or Booking.objects.filter(seat=seat).exists():
                     error_seats.append(seat.seat_number)
                     continue
 
-                # Check if reserved by someone else
                 if seat.is_reserved and seat.reserved_by != request.user:
                     error_seats.append(seat.seat_number)
                     continue
 
-                # Reserve the seat for this user for 2 minutes
                 seat.reserved_by = request.user
                 seat.reserved_at = timezone.now()
                 seat.save()
@@ -225,6 +218,7 @@ def book_seats(request, theater_id):
                 'error': 'No valid seats selected'
             })
 
+        # Calculate base transaction price values (e.g., 2 seats * 15000 = 30000 Paisa)
         amount = len(selected_seats) * 15000
 
         seat_ids_str = '-'.join(sorted([str(s.id) for s in selected_seats]))
@@ -253,7 +247,6 @@ def book_seats(request, theater_id):
             })
         except Exception as e:
             logger.error(f'Razorpay order creation failed: {str(e)}')
-            # Release reservations if order creation fails
             Seat.objects.filter(
                 id__in=[s.id for s in selected_seats]
             ).update(reserved_by=None, reserved_at=None)
@@ -274,14 +267,16 @@ def book_seats(request, theater_id):
         )
         payment.seats.set(selected_seats)
 
+        # 🟢 THE FIX: Clean data context object mappings passed down to the client template
         return render(request, 'movies/payment.html', {
             'theater': theater,
             'selected_seats': selected_seats,
-            'amount': int(amount / 100),
-            'razorpay_order_id': razorpay_order['id'],
+            'display_amount': int(amount / 100),       # Map directly to your table price layout positions
+            'amount_paisa': amount,                    # Map directly into the script token block initialization strings
+            'razorpay_order_id': razorpay_order['id'],  # Cleaned syntax string assignment error
             'razorpay_key_id': settings.RAZORPAY_KEY_ID,
             'user': request.user,
-            'reservation_timeout': 120,  # 2 minutes in seconds for frontend timer
+            'reservation_timeout': 120,
         })
 
     seats = Seat.objects.filter(theater=theater)
