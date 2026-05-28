@@ -122,15 +122,23 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ==============================================================================
 # REDIS AND CELERY INTEGRATION
 # ==============================================================================
-REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+RAW_REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 
+# If it's a secure cloud rediss URL, automatically append the missing SSL parameter for Celery
+if RAW_REDIS_URL.startswith('rediss://') and 'ssl_cert_reqs' not in RAW_REDIS_URL:
+    # Handles query parameter joining smoothly
+    separator = '&' if '?' in RAW_REDIS_URL else '?'
+    REDIS_URL = f"{RAW_REDIS_URL}{separator}ssl_cert_reqs=none"
+else:
+    REDIS_URL = RAW_REDIS_URL
+
+# Apply the safe URL to Celery and Cache configurations
 CELERY_BROKER_URL = REDIS_URL
-CELERY_RESULT_BACKEND = REDIS_URL  # Added to track task states properly
+CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 
-# Keep this! This runs your background cron jobs
 CELERY_BEAT_SCHEDULE = {
     'release-expired-reservations': {
         'task': 'movies.tasks.release_expired_reservations',
@@ -146,7 +154,7 @@ CACHES = {
         'TIMEOUT': 300,
         'OPTIONS': {
             'CONNECTION_POOL_KWARGS': {
-                'ssl_cert_reqs': None  # Bypasses strict SSL validation errors for cloud providers
+                'ssl_cert_reqs': None  # Bypasses strict SSL validation errors for the cache engine
             }
         }
     }
