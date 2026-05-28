@@ -291,97 +291,7 @@ def book_seats(request, theater_id):
     })
 
 
-@login_required(login_url='/login/')
-def payment_success(request):
 
-    if request.method != 'POST':
-        return redirect('movie_list')
-
-    # Handle cancellation
-    if request.POST.get('cancelled'):
-        order_id = request.POST.get('razorpay_order_id')
-        try:
-            payment = Payment.objects.get(
-                razorpay_order_id=order_id,
-                user=request.user
-            )
-            payment.status = 'cancelled'
-            payment.save()
-        except Payment.DoesNotExist:
-            pass
-        return redirect('movie_list')
-
-    razorpay_order_id = request.POST.get('razorpay_order_id')
-    razorpay_payment_id = request.POST.get('razorpay_payment_id')
-    razorpay_signature = request.POST.get('razorpay_signature')
-
-    # Server-side signature verification — fraud prevention
-    try:
-        razorpay_client.utility.verify_payment_signature({
-            'razorpay_order_id': razorpay_order_id,
-            'razorpay_payment_id': razorpay_payment_id,
-            'razorpay_signature': razorpay_signature
-        })
-
-    except razorpay.errors.SignatureVerificationError:
-        logger.error(
-            f'Signature verification failed for order {razorpay_order_id}. '
-            f'Possible fraud by user {request.user.id}'
-        )
-        return render(request, 'movies/payment_failed.html', {
-            'error': 'Payment verification failed. Please contact support.'
-        })
-
-    # Confirm booking inside atomic block
-    try:
-        with transaction.atomic():
-            payment = Payment.objects.select_for_update().get(
-                razorpay_order_id=razorpay_order_id,
-                user=request.user
-            )
-
-            # Idempotency — skip if already processed
-            if payment.status == 'success':
-                return redirect('movie_list')
-
-            payment.razorpay_payment_id = razorpay_payment_id
-            payment.status = 'success'
-            payment.save()
-
-            booked_seat_numbers = []
-
-            for seat in payment.seats.all():
-                if not seat.is_booked:
-                    Booking.objects.create(
-                        user=request.user,
-                        seat=seat,
-                        movie=payment.theater.movie,
-                        theater=payment.theater
-                    )
-                    seat.is_booked = True
-                    seat.reserved_by = None
-                    seat.reserved_at = None
-                    seat.save()
-                    booked_seat_numbers.append(seat.seat_number)
-
-            if booked_seat_numbers:
-                send_booking_email.delay(
-                    request.user.email,
-                    request.user.username,
-                    payment.theater.movie.name,
-                    payment.theater.name,
-                    str(payment.theater.time),
-                    ', '.join(booked_seat_numbers),
-                    razorpay_payment_id
-                )
-
-    except Payment.DoesNotExist:
-        logger.error(f'Payment not found for order {razorpay_order_id}')
-        return render(request, 'movies/payment_failed.html', {
-            'error': 'Payment record not found.'
-        })
-
-    return redirect('movie_list')
 
 
 @csrf_exempt
@@ -588,21 +498,68 @@ def admin_dashboard(request):
 
 
 @login_required(login_url='/login/')
-def test_payment_success(request, order_id):
-    with transaction.atomic():
+def payment_success(request):
+    if request.method != 'POST':
+        return redirect('movie_list')
+
+    # Handle cancellation
+    if request.POST.get('cancelled'):
+        order_id = request.POST.get('razorpay_order_id')
         try:
-            payment = Payment.objects.select_for_update().get(
+            payment = Payment.objects.get(
                 razorpay_order_id=order_id,
                 user=request.user
             )
+            payment.status = 'cancelled'
+            payment.save()
+        except Payment.DoesNotExist:
+            pass
+        return redirect('movie_list')
+
+    razorpay_order_id = request.POST.get('razorpay_order_id')
+    razorpay_payment_id = request.POST.get('razorpay_payment_id')
+    razorpay_signature = request.POST.get('razorpay_signature')
+
+    # Server-side signature verification — fraud prevention
+    try:
+        razorpay_client.utility.verify_payment_signature({
+            'razorpay_order_id': razorpay_order_id,
+            'razorpay_payment_id': razorpay_payment_id,
+            'razorpay_signature': razorpay_signature
+        })
+    except razorpay.errors.SignatureVerificationError:
+        logger.error(
+            f'Signature verification failed for order {razorpay_order_id}. '
+            f'Possible fraud by user {request.user.id}'
+        )
+        return render(request, 'movies/payment_failed.html', {
+            'error': 'Payment verification failed. Please contact support.'
+        })
+
+    # Confirm booking inside atomic block
+    try:
+        booked_seat_numbers = []
+        user_email = request.user.email
+        username = request.user.username
+
+        with transaction.atomic():
+            payment = Payment.objects.select_for_update().get(
+                razorpay_order_id=razorpay_order_id,
+                user=request.user
+            )
+
+            # Idempotency — skip if already processed
             if payment.status == 'success':
                 return redirect('movie_list')
 
+            payment.razorpay_payment_id = razorpay_payment_id
             payment.status = 'success'
-            payment.razorpay_payment_id = f'test_pay_{uuid.uuid4().hex[:10]}'
             payment.save()
 
-            booked_seat_numbers = []
+            movie_name = payment.theater.movie.name
+            theater_name = payment.theater.name
+            theater_time = str(payment.theater.time)
+
             for seat in payment.seats.all():
                 if not seat.is_booked:
                     Booking.objects.create(
@@ -617,17 +574,77 @@ def test_payment_success(request, order_id):
                     seat.save()
                     booked_seat_numbers.append(seat.seat_number)
 
-            if booked_seat_numbers:
-                send_booking_email.delay(
-                    request.user.email,
-                    request.user.username,
-                    payment.theater.movie.name,
-                    payment.theater.name,
-                    str(payment.theater.time),
-                    ', '.join(booked_seat_numbers),
-                    payment.razorpay_payment_id
-                )
-        except Payment.DoesNotExist:
-            return redirect('movie_list')
+        # Trigger background task AFTER database transaction successfully closes
+        if booked_seat_numbers:
+            send_booking_email.delay(
+                user_email,
+                username,
+                movie_name,
+                theater_name,
+                theater_time,
+                ', '.join(booked_seat_numbers),
+                razorpay_payment_id
+            )
+
+    except Payment.DoesNotExist:
+        logger.error(f'Payment not found for order {razorpay_order_id}')
+        return render(request, 'movies/payment_failed.html', {
+            'error': 'Payment record not found.'
+        })
+
+    return redirect('movie_list')
+
+
+@login_required(login_url='/login/')
+def test_payment_success(request, order_id):
+    try:
+        booked_seat_numbers = []
+        user_email = request.user.email
+        username = request.user.username
+
+        with transaction.atomic():
+            payment = Payment.objects.select_for_update().get(
+                razorpay_order_id=order_id,
+                user=request.user
+            )
+            if payment.status == 'success':
+                return redirect('movie_list')
+
+            payment.status = 'success'
+            payment.razorpay_payment_id = f'test_pay_{uuid.uuid4().hex[:10]}'
+            payment.save()
+
+            movie_name = payment.theater.movie.name
+            theater_name = payment.theater.name
+            theater_time = str(payment.theater.time)
+
+            for seat in payment.seats.all():
+                if not seat.is_booked:
+                    Booking.objects.create(
+                        user=request.user,
+                        seat=seat,
+                        movie=payment.theater.movie,
+                        theater=payment.theater
+                    )
+                    seat.is_booked = True
+                    seat.reserved_by = None
+                    seat.reserved_at = None
+                    seat.save()
+                    booked_seat_numbers.append(seat.seat_number)
+
+        # Trigger background task AFTER database transaction successfully closes
+        if booked_seat_numbers:
+            send_booking_email.delay(
+                user_email,
+                username,
+                movie_name,
+                theater_name,
+                theater_time,
+                ', '.join(booked_seat_numbers),
+                payment.razorpay_payment_id
+            )
+            
+    except Payment.DoesNotExist:
+        return redirect('movie_list')
 
     return redirect('movie_list')
