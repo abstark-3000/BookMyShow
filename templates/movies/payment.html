@@ -35,7 +35,6 @@
                         </tr>
                     </table>
 
-                    <!-- Reservation countdown timer -->
                     <div class="alert alert-warning text-center mb-3">
                         ⏰ Seats reserved for <strong id="countdown">2:00</strong> — complete payment before timeout
                     </div>
@@ -44,10 +43,9 @@
                         Pay ₹{{ amount }}
                     </button>
 
-                    
-
-                    <a href="/movies/payment/test-success/{{ razorpay_order_id }}/" class="btn btn-warning w-100 mt-2">
+                    <a href="{% url 'test_payment_success' razorpay_order_id %}" class="btn btn-warning w-100 mt-2">
                         ⚡ Simulate Success (Testing Only)
+                    </td>
                     </a>
 
                 </div>
@@ -70,7 +68,8 @@ document.getElementById('pay-btn').onclick = function() {
         handler: function(response) {
             const form = document.createElement('form');
             form.method = 'POST';
-            form.action = '{% url "payment_success" %}';
+            form.action = "{% url 'payment_success' %}"; // Enforced clean quote wrapper bindings
+            
             const fields = {
                 'razorpay_order_id': response.razorpay_order_id,
                 'razorpay_payment_id': response.razorpay_payment_id,
@@ -95,7 +94,7 @@ document.getElementById('pay-btn').onclick = function() {
         theme: { color: '#0d6efd' },
         modal: {
             ondismiss: function() {
-                fetch('{% url "payment_success" %}', {
+                fetch("{% url 'payment_success' %}", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -103,7 +102,7 @@ document.getElementById('pay-btn').onclick = function() {
                     },
                     body: 'cancelled=true&razorpay_order_id={{ razorpay_order_id }}'
                 }).then(() => {
-                    window.location.href = '{% url "movie_list" %}';
+                    window.location.href = "{% url 'movie_list' %}";
                 });
             }
         }
@@ -111,7 +110,6 @@ document.getElementById('pay-btn').onclick = function() {
     const rzp = new Razorpay(options);
     rzp.open();
 };
-
 
 // Countdown timer — 2 minutes
 let timeLeft = {{ reservation_timeout }};
@@ -125,11 +123,9 @@ const timer = setInterval(function() {
 
     if (timeLeft <= 0) {
         clearInterval(timer);
-        // Redirect back to seat selection when timeout expires
         alert('Your seat reservation has expired. Please select seats again.');
-        window.location.href = '{% url "book_seats" theater.id %}';
+        window.location.href = "{% url 'book_seats' theater.id %}";
     }
 }, 1000);
-
 </script>
 {% endblock %}
