@@ -1,5 +1,3 @@
-# Save this file strictly as: create_admin.py
-
 import os
 import django
 
@@ -10,9 +8,9 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-username = "arnav_admin"
-email = "bhardwajarnav378@gmail.com"
-password = "SecureSuperPassword123"
+username = os.environ.get('ADMIN_USERNAME', 'arnav_admin')
+email = os.environ.get('ADMIN_EMAIL', 'bhardwajarnav378@gmail.com')
+password = os.environ.get('ADMIN_PASSWORD', 'SecureSuperPassword123')
 
 if not User.objects.filter(username=username).exists():
     print(f"Creating superuser {username}...")

@@ -20,14 +20,14 @@ CSRF_TRUSTED_ORIGINS = [
 
 # APPLICATIONS
 INSTALLED_APPS = [
+    'cloudinary_storage',   # 1. This MUST go first!
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'cloudinary',                  # ← add
-    'cloudinary_storage',   
+    'cloudinary',           # 2. This can go right below staticfiles
     'users',
     'movies',
 ]
