@@ -31,7 +31,7 @@
                         </tr>
                         <tr>
                             <td><strong>Amount</strong></td>
-                            <td>₹{{ amount }}</td>
+                            <td>₹{{ display_amount }}</td>
                         </tr>
                     </table>
 
@@ -40,12 +40,11 @@
                     </div>
 
                     <button id="pay-btn" class="btn btn-success w-100 btn-lg">
-                        Pay ₹{{ amount }}
+                        Pay ₹{{ display_amount }}
                     </button>
 
                     <a href="{% url 'test_payment_success' razorpay_order_id %}" class="btn btn-warning w-100 mt-2">
                         ⚡ Simulate Success (Testing Only)
-                    </td>
                     </a>
 
                 </div>
@@ -59,7 +58,7 @@
 document.getElementById('pay-btn').onclick = function() {
     var options = {
         key: '{{ razorpay_key_id }}',
-        amount: {{ amount }} * 100,
+        amount: '{{ amount_paisa }}', // 🟢 FIXED: Injected raw matching paisa directly as a valid string value
         currency: 'INR',
         name: 'BookMyShow',
         description: 'Movie Ticket Booking',
@@ -68,7 +67,7 @@ document.getElementById('pay-btn').onclick = function() {
         handler: function(response) {
             const form = document.createElement('form');
             form.method = 'POST';
-            form.action = "{% url 'payment_success' %}"; // Enforced clean quote wrapper bindings
+            form.action = "{% url 'payment_success' %}";
             
             const fields = {
                 'razorpay_order_id': response.razorpay_order_id,
