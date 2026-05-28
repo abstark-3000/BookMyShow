@@ -117,8 +117,11 @@ STORAGES = {
     },
 }
 
-# 🟢 ADDED THIS FALLBACK LINE TO FIX THE CLOUDINARY BUILD CRASH:
+# Legacy fallback for Cloudinary build compliance
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# 🟢 ADD THIS LINE: Stops WhiteNoise from crashing when it finds missing admin SVG icons
+WHITENOISE_MANIFEST_STRICT = False
 
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME'),
