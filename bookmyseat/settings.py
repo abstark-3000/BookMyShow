@@ -120,15 +120,17 @@ CLOUDINARY_STORAGE = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ==============================================================================
-# REDIS, CELERY, AND CACHE INTEGRATION
+# REDIS AND CELERY INTEGRATION
 # ==============================================================================
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 
-# Celery Configurations
 CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL  # Added to track task states properly
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
+
+# Keep this! This runs your background cron jobs
 CELERY_BEAT_SCHEDULE = {
     'release-expired-reservations': {
         'task': 'movies.tasks.release_expired_reservations',
