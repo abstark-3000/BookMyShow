@@ -105,6 +105,8 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+MEDIA_URL = '/media/'  # Required for Django template image rendering engines
+
 # Modern Django 4.2+ Storage Framework
 STORAGES = {
     "default": {
@@ -120,6 +122,8 @@ CLOUDINARY_STORAGE = {
     'API_KEY': os.environ.get('CLOUDINARY_API_KEY'),
     'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET'),
 }
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ==============================================================================
 # REDIS AND CELERY INTEGRATION
@@ -138,15 +142,6 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'movies.tasks.release_expired_reservations',
         'schedule': 60.0,
     },
-}
-
-# Standard Cache Configuration
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': REDIS_URL,
-        'TIMEOUT': 300,
-    }
 }
 
 # Production Cache Configuration supporting Secure Cloud TLS Connection Strings
