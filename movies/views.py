@@ -271,9 +271,9 @@ def book_seats(request, theater_id):
         return render(request, 'movies/payment.html', {
             'theater': theater,
             'selected_seats': selected_seats,
-            'display_amount': int(amount / 100),       # Map directly to your table price layout positions
-            'amount_paisa': amount,                    # Map directly into the script token block initialization strings
-            'razorpay_order_id': razorpay_order['id'],  # Cleaned syntax string assignment error
+            'display_amount': int(amount / 100),   # rupees for display — ₹300
+            'amount_paisa': amount,                 # paise for Razorpay — 30000
+            'razorpay_order_id': razorpay_order['id'],
             'razorpay_key_id': settings.RAZORPAY_KEY_ID,
             'user': request.user,
             'reservation_timeout': 120,

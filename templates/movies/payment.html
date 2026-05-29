@@ -58,7 +58,7 @@
 document.getElementById('pay-btn').onclick = function() {
     var options = {
         key: '{{ razorpay_key_id }}',
-        amount: '{{ amount_paisa }}', // 🟢 FIXED: Injected raw matching paisa directly as a valid string value
+        amount: {{ amount_paisa }}, // 🟢 FIXED: Injected raw matching paisa directly as a valid string value
         currency: 'INR',
         name: 'BookMyShow',
         description: 'Movie Ticket Booking',
